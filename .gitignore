@@ -1,0 +1,5 @@
+backend/data/*.csv
+frontend/node_modules/
+backend/__pycache__/
+*.log
+.env

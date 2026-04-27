@@ -1,0 +1,28 @@
+{
+  "features": [
+    "Packet Length Variance",
+    "Fwd IAT Std",
+    "Bwd Packet Length Std",
+    "Packet Length Std",
+    "Bwd Packet Length Max",
+    "Max Packet Length",
+    "Idle Min",
+    "Idle Mean",
+    "Idle Max",
+    "Avg Bwd Segment Size",
+    "Bwd Packet Length Mean",
+    "Fwd IAT Max",
+    "Flow IAT Max",
+    "Average Packet Size",
+    "Packet Length Mean"
+  ],
+  "contamination": 0.01,
+  "optimal_threshold": -0.01854173253758495,
+  "threshold_percentile": 24,
+  "note": "Threshold tuned for high recall. contamination kept low because training data is 100% benign.",
+  "performance": {
+    "precision": 0.9644,
+    "recall": 0.6366,
+    "f1": 0.767
+  }
+}
