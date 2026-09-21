@@ -1,0 +1,10 @@
+{
+  "192.168.9.189": {
+    "ip": "192.168.9.189",
+    "ward": "General Ward",
+    "attack_type": "DoS Hulk",
+    "score": -0.1126,
+    "timestamp": "19:58:57",
+    "status": "ACTIVE"
+  }
+}

@@ -4,7 +4,7 @@ import ConfusionMatrix from '../components/ConfusionMatrix';
 import ScoreDistributionChart from '../components/ScoreDistributionChart';
 import LiveScoreGraph from '../components/LiveScoreGraph';
 import { api } from '../api';
-import { useStream } from '../hooks/useStream';
+import { useSocketCtx } from '../App';
 
 const S = {
   page: {
@@ -26,6 +26,7 @@ const S = {
     fontWeight: 600, color: 'var(--text-primary)',
     letterSpacing: '0.02em',
   },
+  controls: { display: 'flex', gap: 10 },
   btn: (active) => ({
     fontFamily: 'var(--font-mono)', fontSize: 12,
     padding: '9px 22px', borderRadius: 4, cursor: 'pointer',
@@ -44,9 +45,7 @@ const S = {
     gridTemplateColumns: '1fr 1fr',
     gap: 16, marginBottom: 16,
   },
-  rowFull: {
-    marginBottom: 16,
-  },
+  rowFull: { marginBottom: 16 },
   panel: {
     background: 'var(--bg-card)',
     border: '1px solid var(--border)',
@@ -57,22 +56,25 @@ const S = {
     color: 'var(--text-dim)', letterSpacing: '0.15em',
     marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8,
   },
-  divider: {
-    width: 24, height: 1, background: 'var(--border-glow)',
+  divider: { width: 24, height: 1, background: 'var(--border-glow)' },
+  isolationBanner: {
+    display:      'flex',
+    alignItems:   'center',
+    gap:          12,
+    padding:      '10px 16px',
+    background:   'rgba(56,189,248,0.06)',
+    border:       '1px solid rgba(56,189,248,0.25)',
+    borderRadius: 6,
+    marginBottom: 16,
+    fontFamily:   'var(--font-mono)',
+    fontSize:     11,
+    color:        '#38bdf8',
   },
 };
 
-export default function Dashboard({ streaming: propStreaming }) {
-  const [stats, setStats]       = useState(null);
+export default function Dashboard() {
+  const { logs, streaming, handleStart, handleStop, stats, isolationEvents } = useSocketCtx();
   const [distData, setDistData] = useState(null);
-  const { logs, streaming, handleStart, handleStop } = useStream();
-
-  useEffect(() => {
-    const fetchStats = () => api.getStats().then(setStats).catch(() => {});
-    fetchStats();
-    const t = setInterval(fetchStats, 3000);
-    return () => clearInterval(t);
-  }, []);
 
   useEffect(() => {
     api.getDistribution().then(setDistData).catch(() => {});
@@ -81,6 +83,7 @@ export default function Dashboard({ streaming: propStreaming }) {
   const model   = stats?.model   || {};
   const session = stats?.session || {};
   const metrics = stats?.metrics || {};
+  const activeIsolations = (isolationEvents || []).filter(e => e.status === 'ACTIVE').length;
 
   return (
     <div style={S.page}>
@@ -90,13 +93,24 @@ export default function Dashboard({ streaming: propStreaming }) {
           <div style={S.title}>MEDGUARD NEXUS // DETECTION ENGINE</div>
           <div style={S.heading}>Model Performance Dashboard</div>
         </div>
-        <button
-          style={S.btn(streaming)}
-          onClick={streaming ? handleStop : handleStart}
-        >
-          {streaming ? '■ STOP STREAM' : '▶ START STREAM'}
-        </button>
+        <div style={S.controls}>
+          <button style={S.btn(streaming)} onClick={streaming ? handleStop : handleStart}>
+            {streaming ? '■ STOP STREAM' : '▶ START STREAM'}
+          </button>
+        </div>
       </div>
+
+      {/* Active isolation banner */}
+      {activeIsolations > 0 && (
+        <div style={S.isolationBanner}>
+          <span style={{ fontSize: 14 }}>🔒</span>
+          <span>
+            <b>{activeIsolations}</b> ward{activeIsolations !== 1 ? 's' : ''} currently isolated
+            by SOAR engine — visit{' '}
+            <a href="/logs" style={{ color: '#38bdf8' }}>Live Monitor</a> to review.
+          </span>
+        </div>
+      )}
 
       {/* Model metric cards */}
       <div style={S.sectionLabel}>
@@ -109,7 +123,7 @@ export default function Dashboard({ streaming: propStreaming }) {
         <MetricCard label="ACCURACY"   value={model.accuracy?.toFixed(1)  ?? '85.9'} color="var(--green)" sub="Overall correct" />
       </div>
 
-      {/* Score timeline + distribution */}
+      {/* Score timeline */}
       <div style={S.rowFull}>
         <div style={S.panel}>
           <LiveScoreGraph logs={logs} threshold={model.threshold ?? -0.0185} />
@@ -131,7 +145,7 @@ export default function Dashboard({ streaming: propStreaming }) {
         </div>
       </div>
 
-      {/* Live session stats */}
+      {/* Live session stats (pushed via WebSocket) */}
       {streaming && (
         <>
           <div style={{ ...S.sectionLabel, marginTop: 8 }}>
@@ -140,8 +154,8 @@ export default function Dashboard({ streaming: propStreaming }) {
             LIVE SESSION METRICS
           </div>
           <div style={S.grid}>
-            <MetricCard label="FLOWS ANALYZED" value={session.total ?? 0}     unit=""  color="var(--teal)"  />
-            <MetricCard label="ATTACKS FLAGGED" value={session.attacks ?? 0}  unit=""  color="var(--red)"   />
+            <MetricCard label="FLOWS ANALYZED"  value={session.total   ?? 0} color="var(--teal)"  />
+            <MetricCard label="ATTACKS FLAGGED" value={session.attacks  ?? 0} color="var(--red)"   />
             <MetricCard label="LIVE PRECISION"  value={metrics.precision ?? 0} color="var(--teal)"  />
             <MetricCard label="LIVE RECALL"     value={metrics.recall ?? 0}   color="var(--amber)" />
           </div>
@@ -158,14 +172,15 @@ export default function Dashboard({ streaming: propStreaming }) {
             <div style={S.panel}>
               <div style={S.sectionLabel}>MODEL DETAILS</div>
               {[
-                ['Algorithm',     'Isolation Forest'],
-                ['Contamination', '0.01 (pure normal train)'],
-                ['Features',      `${model.features ?? 15} selected by separation`],
-                ['Threshold',     `${model.threshold ?? -0.0185} (24th percentile)`],
-                ['Training Data', 'Monday — 100% Benign'],
-                ['Test Data',     'Wednesday — Benign + DoS Hulk'],
-                ['Sample Size',   '80,000 rows each'],
+                ['Algorithm',       'Isolation Forest'],
+                ['Contamination',   '0.01 (pure normal train)'],
+                ['Features',        `${model.features ?? 15} selected by separation`],
+                ['Threshold',       `${model.threshold ?? -0.0185} (24th percentile)`],
+                ['Training Data',   'Monday — 100% Benign'],
+                ['Test Data',       'Wednesday — Benign + DoS Hulk'],
+                ['Sample Size',     '80,000 rows each'],
                 ['Recall Strategy', 'Threshold tuning, not contamination'],
+                ['Phase',           '2 — WebSocket + SOAR + SQLite'],
               ].map(([k, v]) => (
                 <div key={k} style={{
                   display: 'flex', justifyContent: 'space-between',

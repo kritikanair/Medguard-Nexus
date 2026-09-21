@@ -1,276 +1,244 @@
-# MedGuard Nexus
-### Real-Time Network Anomaly Detection Dashboard
+# MedGuard Nexus — Phase 2
 
-> A full-stack cybersecurity system that uses Machine Learning to detect network intrusions in real-time, built for hospital/enterprise network security monitoring.
-
----
-
-## 📌 Overview
-
-MedGuard Nexus simulates a live Security Operations Center (SOC) dashboard. It ingests real network traffic data from the CIC-IDS2017 dataset, runs it through a trained Isolation Forest model, and displays verdicts, scores, and AI-generated threat summaries on an interactive React dashboard — all in real time.
+> **Enterprise-grade Real-Time Intrusion Detection & Automated Response System (SOAR)**
+> Built on Isolation Forest ML · Flask-SocketIO · React 19 · SQLite
 
 ---
 
-## 🏗️ System Architecture
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         MACHINE LEARNING                            │
-│                                                                     │
-│   Wednesday-workingHours.pcap_ISCX.csv  (CIC-IDS2017 dataset)      │
-│              ↓  3000 balanced rows (BENIGN + DoS Hulk)              │
-│   IsolationForest  →  StandardScaler  →  Threshold (-0.0185)        │
-│   Saved as: anomaly_model.pkl | scaler.pkl | threshold.pkl          │
-└───────────────────────────┬─────────────────────────────────────────┘
-                            │  loaded at startup
-                            ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                      FLASK BACKEND  (port 5000)                     │
-│                                                                     │
-│   GET /api/predict   →  infer_row()  →  JSON response               │
-│   GET /api/stats     →  live session metrics                        │
-│   GET /api/health    →  server + model status                       │
-└───────────────────────────┬─────────────────────────────────────────┘
-                            │  HTTP  (CORS enabled)
-                            ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    REACT FRONTEND  (port 3000)                      │
-│                                                                     │
-│   useStream hook  →  polls /api/predict every 1.5s                  │
-│   Dashboard       →  metric cards, score graph, confusion matrix    │
-│   Live Monitor    →  scrolling traffic table + AI Summary panel     │
-└─────────────────────────────────────────────────────────────────────┘
+[Scapy / CSV Replay]
+        │
+        ▼
+  PacketSniffer (sniffer.py)
+  • Live capture or CSV fallback
+  • Computes 15 flow features
+        │
+        ▼
+  Isolation Forest (anomaly_model.pkl)
+  • Scores every flow
+  • Verdict: NORMAL | ANOMALY
+        │
+        ├──▶ SOAREngine (soar.py)
+        │    • Tracks per-IP strikes
+        │    • Auto-isolates at threshold 3
+        │    • JSON blacklist (+ optional iptables/pfctl)
+        │    • Emits isolation_event via WebSocket
+        │
+        ├──▶ SQLite (database.py)
+        │    • telemetry_logs table
+        │    • isolation_events table
+        │
+        └──▶ Flask-SocketIO → /ws/telemetry
+             • telemetry event   (every ~750ms)
+             • stats_update      (every ~3s)
+             • isolation_event   (on SOAR trigger)
 ```
+
+## Tech Stack
+
+| Component     | Technology                              | Phase |
+|---------------|-----------------------------------------|-------|
+| ML Model      | Isolation Forest (scikit-learn)         | 1+2   |
+| Backend       | Flask 3.1 + Flask-SocketIO 5.x          | 2     |
+| Real-time     | WebSocket `/ws/telemetry` namespace     | 2     |
+| Packet Engine | Scapy (live) / CSV fallback (demo)      | 2     |
+| SOAR Engine   | Custom Python + JSON blacklist          | 2     |
+| Persistence   | SQLite3 (WAL mode, thread-safe)         | 2     |
+| Frontend      | React 19 + socket.io-client v4          | 2     |
+| Topology Map  | Inline SVG animated digital twin        | 2     |
 
 ---
 
-## 🛠️ Tech Stack
+## Quick Start
 
-| Layer | Technology |
-|---|---|
-| **ML Model** | scikit-learn `IsolationForest` |
-| **Data** | CIC-IDS2017 — Wednesday Working Hours (PCAP-derived CSV) |
-| **Backend** | Python 3.14 · Flask 3.1 · Flask-CORS · pandas · numpy · joblib |
-| **Frontend** | React 19 · React Router v6 · Vanilla CSS |
-| **Fonts** | Inter (body) · JetBrains Mono (monospace/data) |
-| **Charts** | Pure SVG (no external chart library) |
-
----
-
-## 📁 Project Structure
-
-```
-medguard/
-├── backend/
-│   ├── app.py                  ← Flask server + all API logic
-│   ├── requirements.txt
-│   ├── models/
-│   │   ├── anomaly_model.pkl   ← Trained Isolation Forest
-│   │   ├── scaler.pkl          ← StandardScaler
-│   │   ├── threshold.pkl       ← Decision boundary (-0.0185)
-│   │   └── medguard_config.json← Feature list + performance metrics
-│   └── data/
-│       └── Wednesday-workingHours.pcap_ISCX.csv
-│
-├── frontend/
-│   ├── public/index.html
-│   └── src/
-│       ├── App.js              ← Router + health check
-│       ├── api.js              ← All fetch calls (centralized)
-│       ├── index.css           ← Design system + CSS variables
-│       ├── hooks/
-│       │   └── useStream.js    ← Polling hook (1.5s interval)
-│       ├── components/
-│       │   ├── Navbar.js
-│       │   ├── MetricCard.js
-│       │   ├── ConfusionMatrix.js
-│       │   ├── ScoreDistributionChart.js
-│       │   ├── LiveScoreGraph.js
-│       │   └── AISummary.js    ← Live alerts + post-analysis report
-│       └── pages/
-│           ├── Dashboard.js
-│           └── LiveMonitor.js
-│
-├── SYSTEM_FLOW.md              ← Detailed technical documentation
-└── README.md                   ← This file
-```
-
----
-
-## 🔄 Complete Data Flow
-
-```
-1. DATASET
-   Wednesday CSV (700k+ rows)
-   → Sampled to 3000: 1800 BENIGN + 1200 DoS Hulk
-   → Loaded into memory as a pandas DataFrame at startup
-
-2. MODEL INFERENCE  (per prediction)
-   Pick one row from dataset (alternates BENIGN ↔ Attack)
-        ↓
-   Extract 15 network flow features
-   (packet length variance, IAT std, idle time, byte rates, etc.)
-        ↓
-   Normalise with StandardScaler
-        ↓
-   Feed into IsolationForest → anomaly score (float)
-   e.g.  +0.31  = normal traffic
-         −0.09  = suspicious / anomalous
-        ↓
-   Compare to threshold (−0.0185):
-     score < threshold  →  ANOMALY  🔴
-     score ≥ threshold  →  NORMAL   🟢
-
-3. API  (GET /api/predict)
-   Returns JSON every time frontend asks:
-   { score, verdict, true_label, is_tp, is_fp, flow_bytes, pkt_rate, … }
-
-4. FRONTEND  (useStream.js)
-   Polls /api/predict every 1.5 seconds
-   Appends each result to logs[] state (max 200 entries)
-   Triggers re-render of all subscribed components
-
-5. UI DISPLAY
-   Live Monitor → scrolling table, color-coded rows
-   Dashboard    → score timeline graph, distribution chart, metric cards
-   AI Summary   → live alerts while streaming, report when stopped
-```
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Python 3.12+ (tested on 3.14)
-- Node.js 18+
-
-### 1. Start the Backend
+### Backend
 
 ```bash
-cd medguard/backend
+cd backend
+
+# Create a virtual environment (recommended)
+python3 -m venv .venv
+source .venv/bin/activate        # macOS/Linux
+# .venv\Scripts\activate         # Windows
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Start the server (no root required — runs in CSV replay mode)
 python app.py
+# → Server on http://localhost:5001
+# → WebSocket on ws://localhost:5001/ws/telemetry
+
+# Optional: live packet capture (macOS/Linux only, requires root)
+sudo python app.py
 ```
 
-> Server starts at **http://localhost:5000**
-> You should see:
-> ```
-> [MedGuard] Loading model artifacts...
-> [MedGuard] ✓ Model loaded. Threshold=-0.0185, Features=15
-> [MedGuard] ✓ Dataset loaded: 3000 rows (1800 benign / 1200 attack)
-> ```
-
-### 2. Start the Frontend
-
-Open a **second terminal**:
+### Frontend
 
 ```bash
-cd medguard/frontend
+cd frontend
 npm install
 npm start
+# → React app on http://localhost:3000
 ```
 
-> App opens at **http://localhost:3000**
+---
 
-### 3. Using the Dashboard
+## Phase 2 Features
 
-1. Navigate to **Live Monitor** tab
-2. Click **▶ START** to begin real-time prediction stream
-3. Watch traffic rows appear every 1.5 seconds
-4. Click **■ STOP** to halt streaming and view the AI summary report
-5. Visit the **Dashboard** tab to see model performance metrics and score graphs
+### 1. WebSocket Communication (`/ws/telemetry`)
+
+| Event (server → client) | Payload                     | Frequency |
+|--------------------------|------------------------------|-----------|
+| `telemetry`              | Single flow inference result | ~750ms    |
+| `stats_update`           | Session metrics + blacklist  | ~3s       |
+| `isolation_event`        | SOAR isolation/unblock event | On-demand |
+| `stream_status`          | Stream start/stop ack        | On-demand |
+| `history_snapshot`       | State snapshot on connect    | On connect|
+
+| Event (client → server) | Payload       | Effect                 |
+|--------------------------|---------------|------------------------|
+| `stream_start`           | —             | Start sniffer + emitter|
+| `stream_stop`            | —             | Stop sniffer + emitter |
+| `isolate_ip`             | `{ ip }`      | Manual IP block        |
+| `unblock_ip`             | `{ ip }`      | Remove IP block        |
+
+### 2. Packet Sniffer Modes
+
+- **LIVE MODE** (requires `sudo` / root): Scapy AsyncSniffer captures real packets on the active NIC.  Sliding flow windows compute 15 CIC-IDS features per flow.
+- **CSV REPLAY MODE** (default / no root): Cycles through the Wednesday CSV dataset with clean BENIGN↔ATTACK alternation.  Identical inference pipeline to live mode.
+
+Detection is automatic — the sniffer checks `os.getuid()` at startup.
+
+### 3. SOAR Engine
+
+- Tracks consecutive anomaly strikes per `src_ip`
+- Auto-isolates when **3 consecutive anomalies** from the same IP are detected
+- Writes to `soar_blacklist.json` (persists across restarts)
+- Optionally applies `iptables` (Linux) or `pfctl` (macOS) rules when `ENABLE_FIREWALL=true`
+- Emits `isolation_event` WebSocket payload immediately on containment
+
+Ward mapping (src_ip 3rd octet):
+
+| Octet | Ward        |
+|-------|-------------|
+| 1     | ICU         |
+| 2     | Emergency   |
+| 3     | Pharmacy    |
+| 4     | Oncology    |
+| 5–9   | General Ward|
+
+### 4. Database (SQLite)
+
+Database file: `backend/medguard_nexus.db`
+
+```sql
+-- All persisted flows
+SELECT * FROM telemetry_logs ORDER BY id DESC LIMIT 50;
+
+-- All isolation events
+SELECT * FROM isolation_events WHERE status = 'ACTIVE';
+```
+
+REST endpoints:
+- `GET /api/history?limit=100` — last N telemetry rows
+- `GET /api/isolations` — all isolation events
+- `GET /api/blacklist` — current blocked IPs
+
+### 5. Hospital Ward Topology
+
+Interactive SVG floor plan on the Live Monitor page:
+- **Normal** — green glow, steady pulse
+- **Attack Detected** — red pulse, attack count badge
+- **Isolated** — blue rotating dashed ring, 🔒 badge
+
+Click any ward node to open the triage drawer for the most recent attack from that ward.
+
+### 6. Triage Panel
+
+Slide-in forensics drawer accessible by:
+- Clicking any row in the traffic table
+- Clicking an active or isolated ward node
+
+Features:
+- IP block/unblock with two-click confirmation
+- Raw feature vector (all 15 model inputs)
+- AI-generated threat narrative
+- Flow details (score, threshold, rate, bytes)
+- False-positive dismissal button
 
 ---
 
-## 🧠 Key Features
+## Environment Variables
 
-### 1. Anomaly Detection (Isolation Forest)
-- **Algorithm:** Isolation Forest — detects anomalies by measuring how easily a data point can be "isolated" from the rest
-- **Training:** Trained exclusively on Monday (100% benign) traffic — it learns what "normal" looks like
-- **Testing:** Evaluated on Wednesday traffic (BENIGN + DoS Hulk attacks)
-- **Score interpretation:** Lower score = more anomalous. Threshold tuned to the 24th percentile for high recall
-
-### 2. Threshold Tuning
-- The decision boundary is **not** the default Isolation Forest output
-- It was manually tuned to `−0.0185` (24th percentile of training scores)
-- This trades some precision for better recall — catching more real attacks
-- Result: **Precision 96.4%**, **Recall 63.7%**, **F1 76.7%**
-
-### 3. Real-Time Log Streaming
-- Frontend polls `/api/predict` every **1500ms**
-- Each response is a complete prediction from a real dataset row
-- Demo mode alternates BENIGN ↔ Attack requests for a clean 50/50 display
-- Table supports filtering: ALL / ATTACK / NORMAL + auto-scroll toggle
-
-### 4. AI Summary Panel
-**Live mode (while streaming):**
-- Displays a rolling alert feed with 4 severity levels: INFO → MEDIUM → HIGH → CRITICAL
-- Alerts are generated based on patterns: burst detection, RDP targeting, high packet rates, etc.
-
-**Post-analysis mode (after STOP):**
-- Generates a structured threat intelligence report:
-  - Overall risk level (LOW / MEDIUM / HIGH / CRITICAL)
-  - Total flows, anomaly count, attack rate
-  - Confusion matrix breakdown (TP / FP / FN / TN)
-  - Key observations (automated text insights)
-
-### 5. Model Performance Dashboard
-- Static metrics from training displayed as metric cards
-- Live session metrics update in real-time as predictions arrive
-- Score distribution histogram (benign vs attack populations with threshold marker)
-- SVG-based live score timeline with animated glow effects
+| Variable              | Default                                        | Description                     |
+|-----------------------|------------------------------------------------|---------------------------------|
+| `MODEL_PATH`          | `models/anomaly_model.pkl`                     | Isolation Forest model          |
+| `SCALER_PATH`         | `models/scaler.pkl`                            | StandardScaler artifact         |
+| `THRESHOLD_PATH`      | `models/threshold.pkl`                         | Decision threshold              |
+| `CONFIG_PATH`         | `models/medguard_config.json`                  | Feature list + metadata         |
+| `DATASET_PATH`        | `data/Wednesday-workingHours.pcap_ISCX.csv`   | CIC-IDS2017 Wednesday CSV       |
+| `DB_PATH`             | `medguard_nexus.db`                            | SQLite database path            |
+| `BLACKLIST_PATH`      | `soar_blacklist.json`                          | SOAR JSON blacklist             |
+| `STREAM_INTERVAL`     | `0.75`                                         | Seconds between emitted events  |
+| `ENABLE_FIREWALL`     | `false`                                        | Enable iptables/pfctl rules     |
+| `AUTO_ISOLATE_THRESHOLD` | `3`                                         | Consecutive anomalies to isolate|
 
 ---
 
-## 📊 Model Performance (CIC-IDS2017 Wednesday)
+## API Reference (Phase 2 additions)
 
-| Metric | Value |
-|---|---|
-| Precision | 96.4% |
-| Recall | 63.7% |
-| F1-Score | 76.7% |
-| Accuracy | 85.9% |
-| True Positives | 18,516 |
-| False Positives | 684 |
-| False Negatives | 10,568 |
-| True Negatives | 50,232 |
-| Threshold | −0.0185 |
-| Features Used | 15 |
+| Endpoint           | Method | Description                           |
+|--------------------|--------|---------------------------------------|
+| `/api/health`      | GET    | Server status + `can_sniff`, `phase`  |
+| `/api/history`     | GET    | Last 100 persisted telemetry rows     |
+| `/api/isolations`  | GET    | All isolation events (DB)             |
+| `/api/blacklist`   | GET    | Current in-memory blacklist           |
+| `/api/isolate`     | POST   | Manually block an IP `{ "ip": "..." }`|
+| `/api/unblock`     | POST   | Manually unblock `{ "ip": "..." }`    |
+
+All Phase 1 endpoints (`/api/predict`, `/api/logs`, `/api/stats`, `/api/scores/distribution`) are **preserved**.
 
 ---
 
-## 🌐 API Reference
+## File Structure (Phase 2)
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/health` | GET | Server + model status |
-| `/api/predict` | GET | One prediction from dataset |
-| `/api/stats` | GET | Live session + model metrics |
-| `/api/scores/distribution` | GET | Score histogram data |
-| `/api/stream/start` | GET | Start background stream thread |
-| `/api/stream/stop` | GET | Stop background stream thread |
-| `/api/logs` | GET | All buffered log entries |
-| `/api/logs/latest/<id>` | GET | Delta logs after a given entry ID |
+```
+backend/
+├── app.py              ← Flask + SocketIO server
+├── sniffer.py          ← NEW: Packet capture & feature extraction
+├── soar.py             ← NEW: SOAR isolation engine
+├── database.py         ← NEW: SQLite persistence layer
+├── requirements.txt    ← Updated with flask-socketio, scapy
+├── models/             ← Pre-trained ML artifacts
+│   ├── anomaly_model.pkl
+│   ├── scaler.pkl
+│   ├── threshold.pkl
+│   └── medguard_config.json
+├── data/
+│   └── Wednesday-workingHours.pcap_ISCX.csv
+├── medguard_nexus.db   ← auto-created on first run
+└── soar_blacklist.json ← auto-created by SOAR
 
----
-
-## 🎨 Design System
-
-- **Theme:** Dark cyber-medical aesthetic (`#080d14` base)
-- **Accent colours:** Teal (`#00e5a0`) · Red (`#ff3b5c`) · Amber (`#f59e0b`) · Green (`#22c55e`)
-- **Grid overlay:** Subtle scanline grid on the background for SOC terminal feel
-- **Animations:** Blinking live indicators, row flash on new entry, score line glow, spinning brand logo
-
----
-
-## 📄 Dataset
-
-**CIC-IDS2017 — Canadian Institute for Cybersecurity**
-
-- Wednesday file contains: BENIGN traffic + DoS Hulk attack traffic
-- Features are network flow statistics (not raw packets): packet lengths, inter-arrival times, byte rates, idle periods
-- IP addresses in the dashboard are **simulated** (the dataset uses anonymised/derived flow stats, not raw IPs)
-
----
-
-*MedGuard Nexus · Built for Industry Conclave Demo · April 2026*
+frontend/
+├── src/
+│   ├── App.js                       ← Socket context provider
+│   ├── api.js                       ← REST client (Phase 1+2)
+│   ├── hooks/
+│   │   ├── useSocket.js             ← NEW: Primary WS hook
+│   │   └── useStream.js             ← Preserved (fallback)
+│   ├── components/
+│   │   ├── WardTopology.js          ← NEW: SVG hospital digital twin
+│   │   ├── TriagePanel.js           ← NEW: Forensics drawer
+│   │   ├── Navbar.js                ← Updated: 3-state WS indicator
+│   │   ├── AISummary.js             ← Preserved
+│   │   ├── ConfusionMatrix.js       ← Preserved
+│   │   ├── LiveScoreGraph.js        ← Preserved
+│   │   ├── MetricCard.js            ← Preserved
+│   │   └── ScoreDistributionChart.js← Preserved
+│   └── pages/
+│       ├── Dashboard.js             ← Updated: WebSocket stats
+│       └── LiveMonitor.js           ← Updated: Topology + Triage
+```

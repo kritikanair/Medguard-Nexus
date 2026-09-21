@@ -87,7 +87,7 @@ button { outline: none; }
 }
 
 /* ══════════════════════════════════════════
-   Keyframe Animations
+   Keyframe Animations — Phase 1
    ══════════════════════════════════════════ */
 
 @keyframes blink {
@@ -142,3 +142,63 @@ button { outline: none; }
   border: 1px solid rgba(0,229,160,0.25);
   color: var(--teal);
 }
+
+/* ══════════════════════════════════════════
+   Keyframe Animations — Phase 2
+   ══════════════════════════════════════════ */
+
+/* Ward node — attack detected red pulse */
+@keyframes ward-attack-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(255,59,92,0.4), 0 0 20px rgba(255,59,92,0.2);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(255,59,92,0.8), 0 0 50px rgba(255,59,92,0.4);
+    opacity: 0.85;
+  }
+}
+
+/* Ward node — isolation shield blue shimmer */
+@keyframes isolation-shimmer {
+  0%   { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -40; }
+}
+
+/* Triage panel slide in */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* Data flow particle pulse */
+@keyframes particle-glow {
+  0%, 100% { opacity: 0.8; r: 3; }
+  50%       { opacity: 1;   r: 5; }
+}
+
+/* Isolation event banner */
+@keyframes isolation-alert {
+  0%   { background: rgba(56,189,248,0.2); border-color: rgba(56,189,248,0.8); }
+  50%  { background: rgba(56,189,248,0.08); border-color: rgba(56,189,248,0.4); }
+  100% { background: rgba(56,189,248,0.08); border-color: rgba(56,189,248,0.4); }
+}
+
+/* WebSocket reconnecting spinner */
+@keyframes ws-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Score badge flash on new attack */
+@keyframes score-flash {
+  0%   { color: #fff; text-shadow: 0 0 12px var(--red); }
+  100% { color: var(--red); text-shadow: none; }
+}
+
+/* Ward hover lift */
+.ward-node:hover {
+  transform: scale(1.02);
+  transition: transform 0.2s ease;
+}
+

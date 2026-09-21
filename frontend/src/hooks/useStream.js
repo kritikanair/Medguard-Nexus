@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-const BASE = 'http://localhost:5000/api';
+const BASE = 'http://localhost:5001/api';
 const POLL_MS = 1500; // ms between predictions
 
 async function fetchPredict() {
