@@ -146,7 +146,7 @@ const S = {
 const gridTemplate = COLS.map(c => c.width).join(' ');
 
 export default function LiveMonitor() {
-  const { logs, streaming, handleStart, handleStop, isolationEvents, blockIP, unblockIP } = useSocketCtx();
+  const { logs, streaming, handleStart, handleStop, isolationEvents, blockIP, unblockIP, frozenAt, clearLogs } = useSocketCtx();
   const [autoScroll,  setAutoScroll]  = useState(true);
   const [filter,      setFilter]      = useState('ALL');
   const [triageEntry, setTriageEntry] = useState(null);
@@ -213,7 +213,7 @@ export default function LiveMonitor() {
             {autoScroll ? '↓ AUTO' : '○ PAUSED'}
           </button>
           <button style={S.btn(streaming)} onClick={streaming ? handleStop : handleStart}>
-            {streaming ? '■ STOP' : '▶ START'}
+            {streaming ? '■ STOP' : logs.length > 0 ? '↺ RESTART' : '▶ START'}
           </button>
         </div>
       </div>
@@ -239,11 +239,15 @@ export default function LiveMonitor() {
             🔒 ISOLATED: <span>{activeIsolations.length}</span>
           </span>
         )}
-        {streaming && (
+        {streaming ? (
           <span style={{ ...S.stat, color: 'var(--amber)', animation: 'blink 1s infinite' }}>
             ● WS STREAMING
           </span>
-        )}
+        ) : logs.length > 0 ? (
+          <span style={{ ...S.stat, color: '#38bdf8' }}>
+            ❄ FROZEN — {frozenAt || 'last session'}
+          </span>
+        ) : null}
       </div>
 
       {/* Active isolations sidebar */}
@@ -289,6 +293,32 @@ export default function LiveMonitor() {
 
       {/* AI Summary */}
       <AISummary logs={logs} streaming={streaming} />
+
+      {/* Frozen session banner */}
+      {!streaming && logs.length > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '8px 14px',
+          background: 'rgba(56,189,248,0.04)',
+          border: '1px solid rgba(56,189,248,0.2)',
+          borderRadius: 6, marginBottom: 8,
+          fontFamily: 'var(--font-mono)', fontSize: 10, color: '#38bdf8',
+        }}>
+          <span>❄ {logs.length} flows preserved from last session — stopped at {frozenAt || '—'}</span>
+          <button
+            onClick={clearLogs}
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(255,59,92,0.3)',
+              color: 'var(--red)', cursor: 'pointer',
+              borderRadius: 3, padding: '2px 10px',
+              fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.08em',
+            }}
+          >
+            CLEAR
+          </button>
+        </div>
+      )}
 
       {/* Traffic table */}
       <div style={S.tableWrap}>

@@ -499,6 +499,60 @@ def manual_unblock():
     return jsonify({"status": "unblocked" if success else "not_found", "ip": ip})
 
 
+@app.route("/api/twin/status")
+def get_twin_status():
+    """Returns simulated Digital Twin state for each hospital ward.
+    Uses the existing in-memory log_buffer and soar blacklist to derive ward states.
+    No new data structures needed — reads only from existing globals."""
+    # Ward definitions matching frontend WardTopology.js
+    ward_ids = ["ICU", "Emergency", "Pharmacy", "Oncology", "General Ward"]
+
+    # Derive isolated wards from SOAR blacklist
+    isolated_wards = set()
+    if soar:
+        for event in soar.get_blacklist():
+            ward = event.get("ward", "General Ward")
+            isolated_wards.add(ward)
+
+    # Derive attacked wards from recent log buffer (last 30 entries)
+    attack_counts = {}
+    recent_logs = list(log_buffer)[-30:]
+    for entry in recent_logs:
+        if entry.get("verdict") == "ANOMALY":
+            ward = entry.get("ward", "General Ward")
+            attack_counts[ward] = attack_counts.get(ward, 0) + 1
+
+    # Build per-ward status
+    ward_status = []
+    for ward_id in ward_ids:
+        if ward_id in isolated_wards:
+            state = "MICRO_ISOLATED"
+        elif attack_counts.get(ward_id, 0) >= 2:
+            state = "DESYNC_DETECTED"
+        else:
+            state = "SYNCED"
+        ward_status.append({
+            "ward":         ward_id,
+            "state":        state,
+            "attack_count": attack_counts.get(ward_id, 0),
+            "is_isolated":  ward_id in isolated_wards,
+            # Hardcoded baseline values from Monday CIC-IDS2017 training data
+            "twin_baseline": {
+                "expected_pkt_rate": 8.3,
+                "expected_bytes_s":  4200,
+                "expected_iat_ms":   120,
+            }
+        })
+
+    return jsonify({
+        "ward_status":     ward_status,
+        "total_desyncs":   sum(1 for w in ward_status if w["state"] == "DESYNC_DETECTED"),
+        "total_isolated":  len(isolated_wards),
+        "streaming":       stream_active,
+        "timestamp":       datetime.now().strftime("%H:%M:%S"),
+    })
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # STARTUP
 # ─────────────────────────────────────────────────────────────────────────────

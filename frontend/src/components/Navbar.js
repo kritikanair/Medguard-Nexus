@@ -138,6 +138,7 @@ export default function Navbar({ connectionState = ConnState.DISCONNECTED, strea
       <div style={S.links}>
         <NavLink to="/"    end style={linkStyle}>DASHBOARD</NavLink>
         <NavLink to="/logs"    style={linkStyle}>LIVE MONITOR</NavLink>
+        <NavLink to="/twin"    style={linkStyle}>DIGITAL TWIN</NavLink>
       </div>
 
       {/* Right-side status */}

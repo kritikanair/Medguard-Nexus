@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import LiveMonitor from './pages/LiveMonitor';
+import DigitalTwin from './pages/DigitalTwin';
 import { useSocket } from './hooks/useSocket';
 
 // ── Socket context so all pages share one connection ─────────────────────────
@@ -22,6 +23,7 @@ export default function App() {
         <Routes>
           <Route path="/"     element={<Dashboard />} />
           <Route path="/logs" element={<LiveMonitor />} />
+          <Route path="/twin" element={<DigitalTwin />} />
         </Routes>
       </BrowserRouter>
     </SocketContext.Provider>

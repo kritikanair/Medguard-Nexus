@@ -33,6 +33,7 @@ export function useSocket() {
   const [connectionState, setConnectionState] = useState(ConnState.DISCONNECTED);
   const [stats,           setStats]           = useState(null);
   const [isolationEvents, setIsolationEvents] = useState([]);
+  const [frozenAt,        setFrozenAt]        = useState(null);
 
   const socketRef = useRef(null);
 
@@ -95,6 +96,12 @@ export function useSocket() {
     socket.on('stream_status', (data) => {
       const isStreaming = data?.status === 'started' || data?.status === 'already_running';
       setStreaming(isStreaming);
+      if (!isStreaming) {
+        const ts = new Date().toLocaleTimeString('en-GB', {
+          hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit',
+        });
+        setFrozenAt(ts);
+      }
     });
 
     socket.on('history_snapshot', (data) => {
@@ -146,6 +153,7 @@ export function useSocket() {
     blockIP,
     unblockIP,
     clearLogs,
+    frozenAt,
     socket: socketRef.current,
   };
 }
