@@ -130,14 +130,14 @@ export default function Navbar({ connectionState = ConnState.DISCONNECTED, strea
         <div style={S.logo}>✦</div>
         <div>
           <div style={S.wordmark}>MEDGUARD NEXUS</div>
-          <div style={S.sub}>ANOMALY DETECTION SYSTEM</div>
+          <div style={S.sub}>REAL-TIME INFERENCE PIPELINE</div>
         </div>
       </NavLink>
 
       {/* Navigation links */}
       <div style={S.links}>
         <NavLink to="/"    end style={linkStyle}>DASHBOARD</NavLink>
-        <NavLink to="/logs"    style={linkStyle}>LIVE MONITOR</NavLink>
+        <NavLink to="/logs"    style={linkStyle}>INFERENCE STREAM</NavLink>
         <NavLink to="/twin"    style={linkStyle}>DIGITAL TWIN</NavLink>
       </div>
 

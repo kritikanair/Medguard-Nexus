@@ -191,8 +191,8 @@ export default function LiveMonitor() {
       {/* Header */}
       <div style={S.header}>
         <div>
-          <div style={S.title}>MEDGUARD NEXUS // REAL-TIME MONITOR</div>
-          <div style={S.heading}>Live Network Traffic Analysis</div>
+          <div style={S.title}>MEDGUARD NEXUS // REAL-TIME INFERENCE STREAM</div>
+          <div style={S.heading}>CIC-IDS2017 Dataset Replay — Real-Time Inference</div>
         </div>
         <div style={S.controls}>
           {['ALL', 'ATTACK', 'NORMAL', 'ISOLATED'].map(f => (
@@ -241,7 +241,7 @@ export default function LiveMonitor() {
         )}
         {streaming ? (
           <span style={{ ...S.stat, color: 'var(--amber)', animation: 'blink 1s infinite' }}>
-            ● WS STREAMING
+            ● STREAM ACTIVE
           </span>
         ) : logs.length > 0 ? (
           <span style={{ ...S.stat, color: '#38bdf8' }}>
@@ -331,7 +331,7 @@ export default function LiveMonitor() {
           {filtered.length === 0 ? (
             <div style={S.empty}>
               <div style={{ fontSize: 28, opacity: 0.3 }}>◌</div>
-              <div>{streaming ? 'Waiting for traffic…' : 'Press START to begin monitoring'}</div>
+              <div>{streaming ? 'Waiting for inference stream…' : 'Press START to begin dataset replay'}</div>
             </div>
           ) : (
             [...filtered].reverse().map((row, i) => {

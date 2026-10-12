@@ -812,7 +812,7 @@ export default function DigitalTwin() {
       ══════════════════════════════════════════════════════════════════════ */}
       <div style={S.archRow}>
         {[
-          { title: 'DATA SOURCE',   desc: 'CIC-IDS2017 Wednesday traffic replayed at 750ms intervals via WebSocket.' },
+          { title: 'DATA SOURCE',   desc: 'CIC-IDS2017 Wednesday traffic replayed at 750ms intervals via WebSocket. Flows scored by Isolation Forest model in real time. Live Scapy capture planned for Semester 2.' },
           { title: 'TWIN BASELINE', desc: 'Isolation Forest trained on Monday benign traffic. 20 features. RobustScaler normalization.' },
           { title: 'DESYNC LOGIC',  desc: 'Anomaly score below threshold = physical state diverges from virtual twin. SOAR auto-isolates after 3 consecutive desyncs from same IP.' },
         ].map(card => (

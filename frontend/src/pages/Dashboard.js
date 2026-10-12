@@ -176,11 +176,11 @@ export default function Dashboard() {
                 ['Contamination',   '0.01 (pure normal train)'],
                 ['Features',        `${model.features ?? 15} selected by separation`],
                 ['Threshold',       `${model.threshold ?? -0.0185} (24th percentile)`],
-                ['Training Data',   'Monday — 100% Benign'],
-                ['Test Data',       'Wednesday — Benign + DoS Hulk'],
+                ['Training Data',   'CIC-IDS2017 Monday — 100% Benign'],
+                ['Test Data',       'CIC-IDS2017 Wednesday — Benign + DoS Hulk (replay)'],
                 ['Sample Size',     '80,000 rows each'],
                 ['Recall Strategy', 'Threshold tuning, not contamination'],
-                ['Phase',           '2 — WebSocket + SOAR + SQLite'],
+                ['Phase',           '2 — Dataset Replay + WebSocket + SOAR + SQLite'],
               ].map(([k, v]) => (
                 <div key={k} style={{
                   display: 'flex', justifyContent: 'space-between',
