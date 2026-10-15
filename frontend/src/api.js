@@ -1,4 +1,4 @@
-const BASE = 'http://localhost:5001/api';
+const BASE = (process.env.REACT_APP_API_URL || 'http://localhost:5001') + '/api';
 
 async function get(path) {
   const res = await fetch(`${BASE}${path}`);

@@ -564,5 +564,6 @@ with app.app_context():
     init_sniffer_and_soar()
 
 if __name__ == "__main__":
-    print("[MedGuard] 🚀 Phase 2 server starting on port 5001…")
-    socketio.run(app, debug=False, host="0.0.0.0", port=5001, allow_unsafe_werkzeug=True)
+    port = int(os.environ.get("PORT", 5001))
+    print(f"[MedGuard] 🚀 Phase 2 server starting on port {port}…")
+    socketio.run(app, debug=False, host="0.0.0.0", port=port, allow_unsafe_werkzeug=True)
