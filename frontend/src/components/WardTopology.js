@@ -15,7 +15,7 @@
  *   192.168.5-9.x → General Ward
  */
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 
 // ── Ward definitions ───────────────────────────────────────────────────────────
 const WARDS = [
@@ -123,7 +123,7 @@ const S = {
 function WardNode({ ward, state, attackCount, onClick, onHover }) {
   const col    = STATE_COLORS[state] || STATE_COLORS.NORMAL;
   const center = wardCenter(ward);
-  const animId = `shield-${ward.id.replace(/\s/g, '')}`;
+  const _animId = `shield-${ward.id.replace(/\s/g, '')}`;  // eslint-disable-line no-unused-vars
 
   return (
     <g

@@ -15,7 +15,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
-const WS_URL     = 'http://localhost:5001';
+const WS_URL     = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 const WS_NS      = '/ws/telemetry';
 const MAX_LOGS   = 200;
 const EVICT_SIZE = 50;
