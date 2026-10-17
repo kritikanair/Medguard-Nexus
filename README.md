@@ -7,7 +7,7 @@
 
 ## What It Does
 
-MedGuard Nexus monitors hospital network traffic in real time, detects anomalies using a trained Isolation Forest model, automatically isolates compromised nodes via a SOAR engine, and visualises the entire system across three live pages — including a Cyber Digital Twin that shows the physical network diverging from its virtual baseline during an attack.
+MedGuard Nexus monitors the hospital network traffic in real time, detects underlying anomalies using a trained Isolation Forest model, automatically isolates compromised nodes via a SOAR engine, and visualises the entire system across three live pages — including a Cyber Digital Twin that shows the physical network diverging from its virtual baseline during an attack.
 
 ---
 
